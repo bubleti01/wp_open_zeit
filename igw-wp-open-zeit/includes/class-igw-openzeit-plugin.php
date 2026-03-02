@@ -45,8 +45,19 @@ class IGW_Openzeit_Plugin
         add_action('admin_post_igw_openzeit_delete_holiday', [$this, 'handle_holiday_delete']);
         add_action('admin_post_igw_openzeit_save_exception', [$this, 'handle_exception_save']);
         add_action('admin_post_igw_openzeit_delete_exception', [$this, 'handle_exception_delete']);
+        add_action('update_option_' . IGW_WP_OPEN_ZEIT_OPTION_KEY, [$this, 'log_option_update'], 10, 2);
     }
 
+
+
+    public function log_option_update($old_value, $value)
+    {
+        if (! defined('WP_DEBUG') || ! WP_DEBUG) {
+            return;
+        }
+
+        error_log('IGW OpenZeit option updated. Old keys: ' . implode(',', array_keys((array) $old_value)) . ' New keys: ' . implode(',', array_keys((array) $value)));
+    }
     public function load_textdomain()
     {
         load_plugin_textdomain('igw_wp_open_zeit', false, dirname(plugin_basename(IGW_WP_OPEN_ZEIT_FILE)) . '/languages');
