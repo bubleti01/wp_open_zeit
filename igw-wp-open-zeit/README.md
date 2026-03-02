@@ -7,11 +7,14 @@
 
 ## Shortcodes
 - `[igw_wp_open_zeit_text]` (Alias: `[open_zeit_text]`)
+  - Ausgabe als `<h2>` mit Status-`<span>`
   - Attribute: `datetime`, `open_text`, `closed_text`, `class`
 - `[igw_wp_open_zeit_short]` (Alias: `[open_zeit_short]`)
-  - Nur Weekly-Daten, gruppiert aufeinanderfolgende Tage
+  - Ausgabe als Tabelle mit Spalten **Tag** und **Zeiten**
+  - Nur Weekly-Daten, gruppiert aufeinanderfolgende offene Tage mit identischen Zeitstrings
 - `[igw_wp_open_zeit_tage]` (Alias: `[open_zeit_tage]`)
-  - Aktuelle Woche basierend auf `start_of_week`
+  - Ausgabe als Tabelle mit Spalten **Tag** und **Zeiten**
+  - Dynamische aktuelle Woche basierend auf `start_of_week` (immer 7 Zeilen)
 
 ## Regeln
 - Ferien dürfen sich nicht überlappen.

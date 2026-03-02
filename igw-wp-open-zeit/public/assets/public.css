@@ -1,2 +1,16 @@
-.igw-open { color: green; }
-.igw-closed { color: red; }
+.igw-open {
+  color: green;
+}
+
+.igw-closed {
+  color: red;
+}
+
+.igw-openzeit-table {
+  border-collapse: collapse;
+}
+
+.igw-openzeit-table th,
+.igw-openzeit-table td {
+  padding: 0.25rem 0.5rem;
+}
