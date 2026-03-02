@@ -114,7 +114,7 @@ class IGW_Openzeit_Validator
     {
         $errors = [];
         $clean  = [];
-        $segments = [];
+        $ranges = [];
 
         foreach ($intervals as $index => $interval) {
             if (! is_array($interval)) {
@@ -138,21 +138,24 @@ class IGW_Openzeit_Validator
                 'end'   => $end,
             ];
 
-            $segments[] = [$this->to_minutes($start), $this->to_minutes($end)];
+            $ranges[] = ['start' => $this->to_minutes($start), 'end' => $this->to_minutes($end)];
         }
 
-        usort($segments, static function ($a, $b) {
-            return $a[0] <=> $b[0];
-        });
+        $range_count = count($ranges);
+        for ($i = 0; $i < $range_count; $i++) {
+            for ($j = $i + 1; $j < $range_count; $j++) {
+                $a_start = $ranges[$i]['start'];
+                $a_end   = $ranges[$i]['end'];
+                $b_start = $ranges[$j]['start'];
+                $b_end   = $ranges[$j]['end'];
 
-        $last_end = -1;
-        foreach ($segments as $segment) {
-            if ($segment[0] < $last_end) {
-                $errors[] = __('Zeitintervalle überlappen sich.', 'igw_wp_open_zeit');
-                break;
+                if ($a_start < $b_end && $b_start < $a_end) {
+                    $errors[] = __('Zeitintervalle überlappen sich.', 'igw_wp_open_zeit');
+                    break 2;
+                }
             }
-            $last_end = max($last_end, $segment[1]);
         }
+
 
         return [
             'errors'    => array_values(array_unique($errors)),
