@@ -41,7 +41,10 @@ class IGW_Openzeit_Validator
     public function validate_holiday(array $record)
     {
         $errors = [];
-        $id     = isset($record['id']) ? sanitize_text_field((string) $record['id']) : wp_generate_uuid4();
+        $id     = isset($record['id']) ? sanitize_text_field((string) $record['id']) : '';
+        if ($id === '') {
+            $id = wp_generate_uuid4();
+        }
         $name   = $this->sanitize_name(isset($record['name']) ? $record['name'] : '');
         $start  = isset($record['start_date']) ? sanitize_text_field((string) $record['start_date']) : '';
         $end    = isset($record['end_date']) ? sanitize_text_field((string) $record['end_date']) : '';
@@ -73,7 +76,10 @@ class IGW_Openzeit_Validator
     public function validate_exception(array $record)
     {
         $errors = [];
-        $id     = isset($record['id']) ? sanitize_text_field((string) $record['id']) : wp_generate_uuid4();
+        $id     = isset($record['id']) ? sanitize_text_field((string) $record['id']) : '';
+        if ($id === '') {
+            $id = wp_generate_uuid4();
+        }
         $name   = $this->sanitize_name(isset($record['name']) ? $record['name'] : '');
         $date   = isset($record['date']) ? sanitize_text_field((string) $record['date']) : '';
         $closed = ! empty($record['closed']);

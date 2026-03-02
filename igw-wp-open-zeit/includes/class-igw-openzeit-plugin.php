@@ -40,10 +40,11 @@ class IGW_Openzeit_Plugin
         add_action('admin_menu', [$this, 'register_admin_menu']);
         add_action('admin_init', [$this, 'register_settings']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_assets']);
-        add_action('admin_post_igw_openzeit_holiday_save', [$this, 'handle_holiday_save']);
-        add_action('admin_post_igw_openzeit_holiday_delete', [$this, 'handle_holiday_delete']);
-        add_action('admin_post_igw_openzeit_exception_save', [$this, 'handle_exception_save']);
-        add_action('admin_post_igw_openzeit_exception_delete', [$this, 'handle_exception_delete']);
+
+        add_action('admin_post_igw_openzeit_save_holiday', [$this, 'handle_holiday_save']);
+        add_action('admin_post_igw_openzeit_delete_holiday', [$this, 'handle_holiday_delete']);
+        add_action('admin_post_igw_openzeit_save_exception', [$this, 'handle_exception_save']);
+        add_action('admin_post_igw_openzeit_delete_exception', [$this, 'handle_exception_delete']);
     }
 
     public function load_textdomain()
@@ -69,8 +70,8 @@ class IGW_Openzeit_Plugin
 
     public function sanitize_settings($input)
     {
-        $current = $this->repository->get_data();
-        $weekly_input = isset($input['weekly']) && is_array($input['weekly']) ? $input['weekly'] : [];
+        $current       = $this->repository->get_data();
+        $weekly_input  = isset($input['weekly']) && is_array($input['weekly']) ? $input['weekly'] : [];
         $weekly_result = $this->validator->validate_weekly($weekly_input);
 
         if (! empty($weekly_result['errors'])) {
@@ -80,7 +81,7 @@ class IGW_Openzeit_Plugin
             return $current;
         }
 
-        $current['weekly'] = $weekly_result['weekly'];
+        $current['weekly']         = $weekly_result['weekly'];
         $current['schema_version'] = 1;
 
         add_settings_error('igw_openzeit_weekly_group', 'igw_openzeit_weekly_saved', __('Wochentage gespeichert.', 'igw_wp_open_zeit'), 'updated');
@@ -115,11 +116,11 @@ class IGW_Openzeit_Plugin
 
     public function handle_holiday_save()
     {
-        $this->guard_admin_action('igw_openzeit_holiday_save');
+        $this->guard_admin_action('igw_openzeit_save_holiday');
 
         $data      = $this->repository->get_data();
         $record_in = [
-            'id'         => isset($_POST['id']) ? wp_unslash($_POST['id']) : '',
+            'id'         => isset($_POST['holiday_id']) ? wp_unslash($_POST['holiday_id']) : '',
             'name'       => isset($_POST['name']) ? wp_unslash($_POST['name']) : '',
             'start_date' => isset($_POST['start_date']) ? wp_unslash($_POST['start_date']) : '',
             'end_date'   => isset($_POST['end_date']) ? wp_unslash($_POST['end_date']) : '',
@@ -130,15 +131,17 @@ class IGW_Openzeit_Plugin
             $this->redirect_with_notice('holidays', $validated['errors'][0], 'error');
         }
 
-        $record = $validated['record'];
+        $record  = $validated['record'];
         $updated = false;
+
         foreach ($data['holidays'] as $idx => $holiday) {
             if ($holiday['id'] === $record['id']) {
                 $data['holidays'][$idx] = $record;
-                $updated = true;
+                $updated                 = true;
                 break;
             }
         }
+
         if (! $updated) {
             $data['holidays'][] = $record;
         }
@@ -148,29 +151,33 @@ class IGW_Openzeit_Plugin
             $this->redirect_with_notice('holidays', $errors[0], 'error');
         }
 
-        $this->repository->save_data($data);
+        update_option(IGW_WP_OPEN_ZEIT_OPTION_KEY, $data, false);
         $this->redirect_with_notice('holidays', __('Ferien gespeichert.', 'igw_wp_open_zeit'), 'updated');
     }
 
     public function handle_holiday_delete()
     {
-        $this->guard_admin_action('igw_openzeit_holiday_delete');
-        $id = isset($_POST['id']) ? sanitize_text_field(wp_unslash($_POST['id'])) : '';
+        $this->guard_admin_action('igw_openzeit_delete_holiday');
+
+        $id   = isset($_POST['holiday_id']) ? sanitize_text_field(wp_unslash($_POST['holiday_id'])) : '';
         $data = $this->repository->get_data();
+
         $data['holidays'] = array_values(array_filter($data['holidays'], static function ($item) use ($id) {
             return $item['id'] !== $id;
         }));
-        $this->repository->save_data($data);
+
+        update_option(IGW_WP_OPEN_ZEIT_OPTION_KEY, $data, false);
         $this->redirect_with_notice('holidays', __('Ferien gelöscht.', 'igw_wp_open_zeit'), 'updated');
     }
 
     public function handle_exception_save()
     {
-        $this->guard_admin_action('igw_openzeit_exception_save');
+        $this->guard_admin_action('igw_openzeit_save_exception');
+
         $data      = $this->repository->get_data();
         $intervals = isset($_POST['intervals']) && is_array($_POST['intervals']) ? wp_unslash($_POST['intervals']) : [];
         $record_in = [
-            'id'        => isset($_POST['id']) ? wp_unslash($_POST['id']) : '',
+            'id'        => isset($_POST['exception_id']) ? wp_unslash($_POST['exception_id']) : '',
             'name'      => isset($_POST['name']) ? wp_unslash($_POST['name']) : '',
             'date'      => isset($_POST['date']) ? wp_unslash($_POST['date']) : '',
             'closed'    => isset($_POST['closed']) ? wp_unslash($_POST['closed']) : '',
@@ -182,15 +189,17 @@ class IGW_Openzeit_Plugin
             $this->redirect_with_notice('exceptions', $validated['errors'][0], 'error');
         }
 
-        $record = $validated['record'];
+        $record  = $validated['record'];
         $updated = false;
+
         foreach ($data['exceptions'] as $idx => $exception) {
             if ($exception['id'] === $record['id']) {
                 $data['exceptions'][$idx] = $record;
-                $updated = true;
+                $updated                   = true;
                 break;
             }
         }
+
         if (! $updated) {
             $data['exceptions'][] = $record;
         }
@@ -200,19 +209,22 @@ class IGW_Openzeit_Plugin
             $this->redirect_with_notice('exceptions', $errors[0], 'error');
         }
 
-        $this->repository->save_data($data);
+        update_option(IGW_WP_OPEN_ZEIT_OPTION_KEY, $data, false);
         $this->redirect_with_notice('exceptions', __('Ausnahme gespeichert.', 'igw_wp_open_zeit'), 'updated');
     }
 
     public function handle_exception_delete()
     {
-        $this->guard_admin_action('igw_openzeit_exception_delete');
-        $id = isset($_POST['id']) ? sanitize_text_field(wp_unslash($_POST['id'])) : '';
+        $this->guard_admin_action('igw_openzeit_delete_exception');
+
+        $id   = isset($_POST['exception_id']) ? sanitize_text_field(wp_unslash($_POST['exception_id'])) : '';
         $data = $this->repository->get_data();
+
         $data['exceptions'] = array_values(array_filter($data['exceptions'], static function ($item) use ($id) {
             return $item['id'] !== $id;
         }));
-        $this->repository->save_data($data);
+
+        update_option(IGW_WP_OPEN_ZEIT_OPTION_KEY, $data, false);
         $this->redirect_with_notice('exceptions', __('Ausnahme gelöscht.', 'igw_wp_open_zeit'), 'updated');
     }
 
@@ -221,15 +233,19 @@ class IGW_Openzeit_Plugin
         if (! current_user_can('manage_options')) {
             wp_die(esc_html__('Keine Berechtigung.', 'igw_wp_open_zeit'));
         }
-        check_admin_referer($nonce_action);
+
+        $nonce = isset($_POST['igw_openzeit_nonce']) ? sanitize_text_field(wp_unslash($_POST['igw_openzeit_nonce'])) : '';
+        if (! wp_verify_nonce($nonce, $nonce_action)) {
+            wp_die(esc_html__('Ungültige Anfrage (Nonce).', 'igw_wp_open_zeit'));
+        }
     }
 
     private function redirect_with_notice($tab, $message, $type)
     {
         $url = add_query_arg([
-            'page' => 'igw-wp-open-zeit',
-            'tab'  => $tab,
-            'igw_notice' => rawurlencode($message),
+            'page'            => 'igw-wp-open-zeit',
+            'tab'             => $tab,
+            'igw_notice'      => rawurlencode($message),
             'igw_notice_type' => $type,
         ], admin_url('options-general.php'));
 
