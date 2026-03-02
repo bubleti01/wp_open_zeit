@@ -128,8 +128,8 @@ class IGW_Openzeit_Validator
                 continue;
             }
 
-            if ($start === $end) {
-                $errors[] = sprintf(__('Intervall %d: Start und Ende dürfen nicht identisch sein.', 'igw_wp_open_zeit'), $index + 1);
+            if ($this->to_minutes($end) <= $this->to_minutes($start)) {
+                $errors[] = sprintf(__('Intervall %d: Endzeit muss größer als Startzeit sein.', 'igw_wp_open_zeit'), $index + 1);
                 continue;
             }
 
@@ -138,10 +138,7 @@ class IGW_Openzeit_Validator
                 'end'   => $end,
             ];
 
-            $range = $this->to_segments($start, $end);
-            foreach ($range as $segment) {
-                $segments[] = $segment;
-            }
+            $segments[] = [$this->to_minutes($start), $this->to_minutes($end)];
         }
 
         usort($segments, static function ($a, $b) {
@@ -243,17 +240,6 @@ class IGW_Openzeit_Validator
         return $h * 60 + $m;
     }
 
-    private function to_segments($start, $end)
-    {
-        $s = $this->to_minutes($start);
-        $e = $this->to_minutes($end);
-
-        if ($e > $s) {
-            return [[$s, $e]];
-        }
-
-        return [[$s, 1440], [0, $e]];
-    }
 
     private function ranges_overlap($a_start, $a_end, $b_start, $b_end)
     {

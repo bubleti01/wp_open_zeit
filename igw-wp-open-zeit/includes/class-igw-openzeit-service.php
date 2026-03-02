@@ -74,28 +74,7 @@ class IGW_Openzeit_Service
         $day = isset($data['weekly'][$weekday]) ? $data['weekly'][$weekday] : ['closed' => true, 'intervals' => []];
         $intervals = ! empty($day['closed']) ? [] : $day['intervals'];
 
-        if ($this->time_in_intervals($dt, $intervals)) {
-            return true;
-        }
-
-        $prev_dt      = $dt->modify('-1 day');
-        $prev_date    = $prev_dt->format('Y-m-d');
-        $prev_weekday = (int) $prev_dt->format('w');
-
-        $prev_intervals = null;
-        foreach ($data['exceptions'] as $exception) {
-            if ($exception['date'] === $prev_date) {
-                $prev_intervals = ! empty($exception['closed']) ? [] : $exception['intervals'];
-                break;
-            }
-        }
-
-        if ($prev_intervals === null) {
-            $prev_day = isset($data['weekly'][$prev_weekday]) ? $data['weekly'][$prev_weekday] : ['closed' => true, 'intervals' => []];
-            $prev_intervals = ! empty($prev_day['closed']) ? [] : $prev_day['intervals'];
-        }
-
-        return $this->time_in_carry_over($dt, $prev_intervals);
+        return $this->time_in_intervals($dt, $intervals);
     }
 
     public function get_current_week_days()
@@ -168,24 +147,7 @@ class IGW_Openzeit_Service
         foreach ($intervals as $interval) {
             $start = $this->minutes($interval['start']);
             $end   = $this->minutes($interval['end']);
-            if ($end > $start && $minutes_now >= $start && $minutes_now < $end) {
-                return true;
-            }
-            if ($end < $start && $minutes_now >= $start) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private function time_in_carry_over(DateTimeImmutable $now, array $intervals)
-    {
-        $minutes_now = ((int) $now->format('H')) * 60 + (int) $now->format('i');
-        foreach ($intervals as $interval) {
-            $start = $this->minutes($interval['start']);
-            $end   = $this->minutes($interval['end']);
-            if ($end < $start && $minutes_now < $end) {
+            if ($minutes_now >= $start && $minutes_now < $end) {
                 return true;
             }
         }
