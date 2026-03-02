@@ -57,18 +57,22 @@ class IGW_Openzeit_Service
             }
         }
 
-        $intervals = null;
+        $exception_today = null;
         foreach ($data['exceptions'] as $exception) {
             if ($exception['date'] === $today) {
-                $intervals = ! empty($exception['closed']) ? [] : $exception['intervals'];
+                $exception_today = $exception;
                 break;
             }
         }
 
-        if ($intervals === null) {
-            $day = isset($data['weekly'][$weekday]) ? $data['weekly'][$weekday] : ['closed' => true, 'intervals' => []];
-            $intervals = ! empty($day['closed']) ? [] : $day['intervals'];
+        if ($exception_today !== null) {
+            $intervals = ! empty($exception_today['closed']) ? [] : $exception_today['intervals'];
+
+            return $this->time_in_intervals($dt, $intervals);
         }
+
+        $day = isset($data['weekly'][$weekday]) ? $data['weekly'][$weekday] : ['closed' => true, 'intervals' => []];
+        $intervals = ! empty($day['closed']) ? [] : $day['intervals'];
 
         if ($this->time_in_intervals($dt, $intervals)) {
             return true;
