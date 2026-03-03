@@ -119,7 +119,7 @@ function igw_openzeit_weekday_name($day)
             <input type="text" name="name" required maxlength="80" placeholder="<?php esc_attr_e('Name', 'igw_wp_open_zeit'); ?>" value="<?php echo esc_attr($editing_holiday['name']); ?>" />
             <input type="date" name="start_date" required value="<?php echo esc_attr($editing_holiday['start_date']); ?>" />
             <input type="date" name="end_date" required value="<?php echo esc_attr($editing_holiday['end_date']); ?>" />
-            <?php submit_button(__('Ferien speichern', 'igw_wp_open_zeit'), 'primary', 'submit', false); ?>
+            <button type="submit" class="button button-primary"><?php esc_html_e('Speichern', 'igw_wp_open_zeit'); ?></button>
         </form>
     <?php else : ?>
         <h2><?php esc_html_e('Ausnahmen', 'igw_wp_open_zeit'); ?></h2>
@@ -162,7 +162,7 @@ function igw_openzeit_weekday_name($day)
                 <?php endforeach; ?>
             </div>
             <button type="button" class="button igw-add-interval" data-day="exception"><?php esc_html_e('+ Zeitraum', 'igw_wp_open_zeit'); ?></button>
-            <?php submit_button(__('Ausnahme speichern', 'igw_wp_open_zeit'), 'primary', 'submit', false); ?>
+            <button type="submit" class="button button-primary"><?php esc_html_e('Speichern', 'igw_wp_open_zeit'); ?></button>
         </form>
     <?php endif; ?>
 </div>
