@@ -39,8 +39,6 @@ class IGW_Openzeit_Repository
         return [
             'schema_version' => 1,
             'weekly'         => $weekly,
-            'holidays'       => [],
-            'exceptions'     => [],
         ];
     }
 }

@@ -61,7 +61,7 @@
         var day = $(this).data('day');
         var $container = $('.igw-intervals[data-day="' + day + '"]');
         var index = $container.find('.igw-interval-row').length;
-        var base = day === 'exception' ? 'intervals' : 'igw_wp_open_zeit_data[weekly][' + day + '][intervals]';
+        var base = 'igw_wp_open_zeit_data[weekly][' + day + '][intervals]';
 
         var row = '<div class="igw-interval-row">' +
             '<input type="time" name="' + base + '[' + index + '][start]" /> ' +

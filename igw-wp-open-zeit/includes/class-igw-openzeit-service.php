@@ -15,25 +15,8 @@ class IGW_Openzeit_Service
 
     public function get_day_display(DateTimeImmutable $date)
     {
-        $data      = $this->repository->get_data();
-        $date_str  = $date->format('Y-m-d');
-        $weekday   = (int) $date->format('w');
-
-        foreach ($data['holidays'] as $holiday) {
-            if ($date_str >= $holiday['start_date'] && $date_str <= $holiday['end_date']) {
-                return ['type' => 'holiday', 'label' => $holiday['name']];
-            }
-        }
-
-        foreach ($data['exceptions'] as $exception) {
-            if ($date_str === $exception['date']) {
-                if (! empty($exception['closed'])) {
-                    return ['type' => 'closed', 'label' => __('Geschlossen', 'igw_wp_open_zeit')];
-                }
-
-                return ['type' => 'hours', 'label' => $this->format_intervals($exception['intervals'])];
-            }
-        }
+        $data    = $this->repository->get_data();
+        $weekday = (int) $date->format('w');
 
         $day = isset($data['weekly'][$weekday]) ? $data['weekly'][$weekday] : ['closed' => true, 'intervals' => []];
 
@@ -48,30 +31,9 @@ class IGW_Openzeit_Service
     {
         $dt      = $now ?: DateTimeImmutable::createFromInterface(current_datetime());
         $data    = $this->repository->get_data();
-        $today   = $dt->format('Y-m-d');
         $weekday = (int) $dt->format('w');
 
-        foreach ($data['holidays'] as $holiday) {
-            if ($today >= $holiday['start_date'] && $today <= $holiday['end_date']) {
-                return false;
-            }
-        }
-
-        $exception_today = null;
-        foreach ($data['exceptions'] as $exception) {
-            if ($exception['date'] === $today) {
-                $exception_today = $exception;
-                break;
-            }
-        }
-
-        if ($exception_today !== null) {
-            $intervals = ! empty($exception_today['closed']) ? [] : $exception_today['intervals'];
-
-            return $this->time_in_intervals($dt, $intervals);
-        }
-
-        $day = isset($data['weekly'][$weekday]) ? $data['weekly'][$weekday] : ['closed' => true, 'intervals' => []];
+        $day       = isset($data['weekly'][$weekday]) ? $data['weekly'][$weekday] : ['closed' => true, 'intervals' => []];
         $intervals = ! empty($day['closed']) ? [] : $day['intervals'];
 
         return $this->time_in_intervals($dt, $intervals);
@@ -79,11 +41,11 @@ class IGW_Openzeit_Service
 
     public function get_current_week_days()
     {
-        $now          = DateTimeImmutable::createFromInterface(current_datetime());
+        $now           = DateTimeImmutable::createFromInterface(current_datetime());
         $start_of_week = (int) get_option('start_of_week', 1);
-        $weekday      = (int) $now->format('w');
-        $diff         = ($weekday - $start_of_week + 7) % 7;
-        $week_start   = $now->modify(sprintf('-%d day', $diff));
+        $weekday       = (int) $now->format('w');
+        $diff          = ($weekday - $start_of_week + 7) % 7;
+        $week_start    = $now->modify(sprintf('-%d day', $diff));
 
         $days = [];
         for ($i = 0; $i < 7; $i++) {
@@ -103,7 +65,7 @@ class IGW_Openzeit_Service
             $order[] = ($start_of_week + $i) % 7;
         }
 
-        $groups = [];
+        $groups   = [];
         $last_pos = null;
         foreach ($order as $pos => $day) {
             $day_data = isset($data['weekly'][$day]) ? $data['weekly'][$day] : ['closed' => true, 'intervals' => []];
