@@ -29,6 +29,11 @@ class IGW_Openzeit_Plugin {
 	protected $shortcodes;
 
 	/**
+	 * @var IGW_Openzeit_Admin|null
+	 */
+	protected $admin = null;
+
+	/**
 	 * @return self
 	 */
 	public static function instance() {
@@ -61,6 +66,11 @@ class IGW_Openzeit_Plugin {
 
 		$this->service    = new IGW_Openzeit_Service( $weekly_hours );
 		$this->shortcodes = new IGW_Openzeit_Shortcodes( $this->service );
+
+		if ( is_admin() ) {
+			$this->admin = new IGW_Openzeit_Admin();
+			$this->admin->hooks();
+		}
 
 		$this->register_shortcodes();
 	}

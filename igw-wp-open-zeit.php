@@ -22,6 +22,7 @@ define( 'IGW_WP_OPEN_ZEIT_URL', plugin_dir_url( __FILE__ ) );
 
 require_once IGW_WP_OPEN_ZEIT_PATH . 'includes/class-igw-openzeit-service.php';
 require_once IGW_WP_OPEN_ZEIT_PATH . 'includes/class-igw-openzeit-shortcodes.php';
+require_once IGW_WP_OPEN_ZEIT_PATH . 'includes/class-igw-openzeit-admin.php';
 require_once IGW_WP_OPEN_ZEIT_PATH . 'includes/class-igw-openzeit-plugin.php';
 
 function igw_wp_open_zeit() {
