@@ -1,0 +1,10 @@
+.igw-interval-row {
+  display: flex;
+  gap: 8px;
+  margin: 6px 0;
+  align-items: center;
+}
+
+.igw-intervals {
+  margin: 8px 0;
+}
