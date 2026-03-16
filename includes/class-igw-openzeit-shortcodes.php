@@ -32,8 +32,8 @@ class IGW_Openzeit_Shortcodes {
 	public function render_text( $atts = array() ) {
 		$atts = shortcode_atts(
 			array(
-				'open_text'   => __( 'Geöffnet', 'igw-open-zeit' ),
-				'closed_text' => __( 'Geschlossen', 'igw-open-zeit' ),
+				'open_text'   => __( 'Geöffnet', 'igw_wp_open_zeit' ),
+				'closed_text' => __( 'Geschlossen', 'igw_wp_open_zeit' ),
 			),
 			$atts
 		);
@@ -51,16 +51,16 @@ class IGW_Openzeit_Shortcodes {
 	 * @return string
 	 */
 	public function render_days() {
-		$today       = function_exists( 'current_datetime' ) ? DateTimeImmutable::createFromMutable( current_datetime() ) : new DateTimeImmutable( 'now' );
-		$week_start  = $today->modify( 'monday this week' )->setTime( 0, 0, 0 );
-		$day_names   = array( 1 => __( 'Montag', 'igw-open-zeit' ), 2 => __( 'Dienstag', 'igw-open-zeit' ), 3 => __( 'Mittwoch', 'igw-open-zeit' ), 4 => __( 'Donnerstag', 'igw-open-zeit' ), 5 => __( 'Freitag', 'igw-open-zeit' ), 6 => __( 'Samstag', 'igw-open-zeit' ), 7 => __( 'Sonntag', 'igw-open-zeit' ) );
-		$html        = '<table class="igw-openzeit-days"><tbody>';
+		$today      = $this->get_site_now();
+		$week_start = $today->modify( 'monday this week' )->setTime( 0, 0, 0 );
+		$day_names  = array( 1 => __( 'Montag', 'igw_wp_open_zeit' ), 2 => __( 'Dienstag', 'igw_wp_open_zeit' ), 3 => __( 'Mittwoch', 'igw_wp_open_zeit' ), 4 => __( 'Donnerstag', 'igw_wp_open_zeit' ), 5 => __( 'Freitag', 'igw_wp_open_zeit' ), 6 => __( 'Samstag', 'igw_wp_open_zeit' ), 7 => __( 'Sonntag', 'igw_wp_open_zeit' ) );
+		$html       = '<table class="igw-openzeit-days"><tbody>';
 
 		for ( $i = 0; $i < 7; $i++ ) {
-			$day      = $week_start->modify( '+' . $i . ' days' );
-			$weekday  = (int) $day->format( 'N' );
-			$display  = $this->service->get_day_display( $day );
-			$html    .= sprintf(
+			$day     = $week_start->modify( '+' . $i . ' days' );
+			$weekday = (int) $day->format( 'N' );
+			$display = $this->service->get_day_display( $day );
+			$html   .= sprintf(
 				'<tr><th>%s</th><td>%s</td></tr>',
 				esc_html( $day_names[ $weekday ] ),
 				esc_html( $display )
@@ -77,9 +77,9 @@ class IGW_Openzeit_Shortcodes {
 	 * @return string
 	 */
 	public function render_short() {
-		$today      = function_exists( 'current_datetime' ) ? DateTimeImmutable::createFromMutable( current_datetime() ) : new DateTimeImmutable( 'now' );
+		$today      = $this->get_site_now();
 		$week_start = $today->modify( 'monday this week' )->setTime( 0, 0, 0 );
-		$day_names  = array( 1 => __( 'Montag', 'igw-open-zeit' ), 2 => __( 'Dienstag', 'igw-open-zeit' ), 3 => __( 'Mittwoch', 'igw-open-zeit' ), 4 => __( 'Donnerstag', 'igw-open-zeit' ), 5 => __( 'Freitag', 'igw-open-zeit' ), 6 => __( 'Samstag', 'igw-open-zeit' ), 7 => __( 'Sonntag', 'igw-open-zeit' ) );
+		$day_names  = array( 1 => __( 'Montag', 'igw_wp_open_zeit' ), 2 => __( 'Dienstag', 'igw_wp_open_zeit' ), 3 => __( 'Mittwoch', 'igw_wp_open_zeit' ), 4 => __( 'Donnerstag', 'igw_wp_open_zeit' ), 5 => __( 'Freitag', 'igw_wp_open_zeit' ), 6 => __( 'Samstag', 'igw_wp_open_zeit' ), 7 => __( 'Sonntag', 'igw_wp_open_zeit' ) );
 
 		$effective_rows = array();
 		for ( $i = 0; $i < 7; $i++ ) {
@@ -125,5 +125,19 @@ class IGW_Openzeit_Shortcodes {
 		}
 
 		return '<div class="igw-openzeit-short">' . implode( '', $lines ) . '</div>';
+	}
+
+	/**
+	 * Returns current datetime in site timezone.
+	 *
+	 * @return DateTimeImmutable
+	 */
+	protected function get_site_now() {
+		$tz = function_exists( 'wp_timezone' ) ? wp_timezone() : new DateTimeZone( date_default_timezone_get() );
+		if ( function_exists( 'current_datetime' ) ) {
+			return DateTimeImmutable::createFromInterface( current_datetime() )->setTimezone( $tz );
+		}
+
+		return new DateTimeImmutable( 'now', $tz );
 	}
 }

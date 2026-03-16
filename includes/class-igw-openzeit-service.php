@@ -42,7 +42,7 @@ class IGW_Openzeit_Service {
 	 * @return bool
 	 */
 	public function is_open_now() {
-		$now = function_exists( 'current_datetime' ) ? current_datetime() : new DateTimeImmutable( 'now' );
+		$now = $this->normalize_datetime( null );
 
 		$effective = $this->get_effective_day_resolution( $now );
 		if ( 'hours' !== $effective['state'] ) {
@@ -71,7 +71,7 @@ class IGW_Openzeit_Service {
 		if ( $this->is_vacation_day( $datetime ) ) {
 			return array(
 				'state'     => 'vacation',
-				'label'     => __( 'Betriebsurlaub', 'igw-open-zeit' ),
+				'label'     => __( 'Betriebsurlaub', 'igw_wp_open_zeit' ),
 				'intervals' => array(),
 			);
 		}
@@ -84,7 +84,7 @@ class IGW_Openzeit_Service {
 		if ( empty( $intervals ) ) {
 			return array(
 				'state'     => 'closed',
-				'label'     => __( 'Geschlossen', 'igw-open-zeit' ),
+				'label'     => __( 'Geschlossen', 'igw_wp_open_zeit' ),
 				'intervals' => array(),
 			);
 		}
@@ -201,12 +201,12 @@ class IGW_Openzeit_Service {
 			try {
 				return new DateTimeImmutable( $date, $tz );
 			} catch ( Exception $e ) {
-				return function_exists( 'current_datetime' ) ? DateTimeImmutable::createFromMutable( current_datetime() ) : new DateTimeImmutable( 'now', $tz );
+				return function_exists( 'current_datetime' ) ? DateTimeImmutable::createFromInterface( current_datetime() ) : new DateTimeImmutable( 'now', $tz );
 			}
 		}
 
 		if ( function_exists( 'current_datetime' ) ) {
-			return DateTimeImmutable::createFromMutable( current_datetime() );
+			return DateTimeImmutable::createFromInterface( current_datetime() );
 		}
 
 		return new DateTimeImmutable( 'now', $tz );
