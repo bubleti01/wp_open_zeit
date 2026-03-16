@@ -84,13 +84,23 @@ class IGW_Openzeit_Admin {
 			$intervals = array();
 			$parts     = array_map( 'trim', explode( ',', $raw ) );
 			foreach ( $parts as $part ) {
-				if ( ! preg_match( '/^(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})$/', $part, $matches ) ) {
+				if ( '' === $part ) {
 					continue;
 				}
 
-				$start = $matches[1];
-				$end   = $matches[2];
-				if ( $start > $end ) {
+				$part = str_replace( array( '–', '—', ';' ), array( '-', '-', ',' ), $part );
+				if ( false === strpos( $part, '-' ) ) {
+					continue;
+				}
+
+				list( $start_raw, $end_raw ) = array_map( 'trim', explode( '-', $part, 2 ) );
+				$start = $this->normalize_time_value( $start_raw );
+				$end   = $this->normalize_time_value( $end_raw );
+				if ( '' === $start || '' === $end ) {
+					continue;
+				}
+
+				if ( $start >= $end ) {
 					continue;
 				}
 
@@ -107,6 +117,42 @@ class IGW_Openzeit_Admin {
 
 		return $sanitized;
 	}
+
+	/**
+	 * Normalizes a time value to H:i.
+	 *
+	 * @param string $value Raw input value.
+	 * @return string
+	 */
+	protected function normalize_time_value( $value ) {
+		$value = trim( (string) $value );
+		if ( '' === $value ) {
+			return '';
+		}
+
+		$value = str_replace( '.', ':', $value );
+		if ( preg_match( '/^(\d{1,2}):(\d{2})$/', $value, $matches ) ) {
+			$hour   = (int) $matches[1];
+			$minute = (int) $matches[2];
+			if ( $hour < 0 || $hour > 23 || $minute < 0 || $minute > 59 ) {
+				return '';
+			}
+
+			return sprintf( '%02d:%02d', $hour, $minute );
+		}
+
+		if ( preg_match( '/^(\d{1,2})$/', $value, $matches ) ) {
+			$hour = (int) $matches[1];
+			if ( $hour < 0 || $hour > 23 ) {
+				return '';
+			}
+
+			return sprintf( '%02d:00', $hour );
+		}
+
+		return '';
+	}
+
 
 	/**
 	 * Render settings page.
