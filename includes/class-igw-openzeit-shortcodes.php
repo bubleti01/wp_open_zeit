@@ -11,57 +11,59 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class IGW_Openzeit_Shortcodes {
 
-	/**
-	 * @var IGW_Openzeit_Service
-	 */
+	/** @var IGW_Openzeit_Service */
 	protected $service;
 
-	/**
-	 * @param IGW_Openzeit_Service $service Service instance.
-	 */
 	public function __construct( IGW_Openzeit_Service $service ) {
 		$this->service = $service;
 	}
 
-	/**
-	 * Status shortcode output.
-	 *
-	 * @param array<string,string> $atts Shortcode attributes.
-	 * @return string
-	 */
 	public function render_text( $atts = array() ) {
 		$atts = shortcode_atts(
 			array(
 				'open_text'   => __( 'Geöffnet', 'igw_wp_open_zeit' ),
 				'closed_text' => __( 'Geschlossen', 'igw_wp_open_zeit' ),
+				'datetime'    => '',
+				'class'       => '',
 			),
-			$atts
+			$atts,
+			'igw_wp_open_zeit_text'
 		);
 
-		$is_open = $this->service->is_open_now();
-		$text    = $is_open ? $atts['open_text'] : $atts['closed_text'];
-		$class   = $is_open ? 'igw-openzeit--open' : 'igw-openzeit--closed';
+		$datetime = is_string( $atts['datetime'] ) && '' !== $atts['datetime'] ? $atts['datetime'] : null;
+		$is_open  = $this->service->is_open_now( $datetime );
+		$status   = $is_open ? 'igw-open' : 'igw-closed';
+		$text     = $is_open ? $atts['open_text'] : $atts['closed_text'];
+		$class    = 'igw-openzeit-text ' . $status . ( $atts['class'] ? ' ' . sanitize_html_class( $atts['class'] ) : '' );
 
-		return sprintf( '<span class="%s">%s</span>', esc_attr( $class ), esc_html( $text ) );
+		return sprintf(
+			'<h2 class="%s"><span class="igw-openzeit-status %s">%s</span></h2>',
+			esc_attr( trim( $class ) ),
+			esc_attr( $status ),
+			esc_html( $text )
+		);
 	}
 
-	/**
-	 * Week table output.
-	 *
-	 * @return string
-	 */
 	public function render_days() {
-		$today      = $this->get_site_now();
-		$week_start = $today->modify( 'monday this week' )->setTime( 0, 0, 0 );
-		$day_names  = array( 1 => __( 'Montag', 'igw_wp_open_zeit' ), 2 => __( 'Dienstag', 'igw_wp_open_zeit' ), 3 => __( 'Mittwoch', 'igw_wp_open_zeit' ), 4 => __( 'Donnerstag', 'igw_wp_open_zeit' ), 5 => __( 'Freitag', 'igw_wp_open_zeit' ), 6 => __( 'Samstag', 'igw_wp_open_zeit' ), 7 => __( 'Sonntag', 'igw_wp_open_zeit' ) );
-		$html       = '<table class="igw-openzeit-days"><tbody>';
+		$today      = $this->get_site_now()->setTime( 0, 0, 0 );
+		$week_dates = $this->get_week_dates( $today );
+		$day_names  = $this->day_names();
+		$html       = '<table class="igw-openzeit-table"><tbody>';
 
-		for ( $i = 0; $i < 7; $i++ ) {
-			$day     = $week_start->modify( '+' . $i . ' days' );
+		foreach ( $week_dates as $day ) {
 			$weekday = (int) $day->format( 'N' );
 			$display = $this->service->get_day_display( $day );
-			$html   .= sprintf(
-				'<tr><th>%s</th><td>%s</td></tr>',
+			$classes = array( 'igw-openzeit-row' );
+			if ( $day->format( 'Y-m-d' ) === $today->format( 'Y-m-d' ) ) {
+				$classes[] = 'igw-openzeit-today';
+				if ( $this->service->is_open_now( $day->format( 'Y-m-d H:i:s' ) ) ) {
+					$classes[] = 'igw-openzeit-today-open';
+				}
+			}
+
+			$html .= sprintf(
+				'<tr class="%s"><th class="igw-openzeit-day">%s</th><td class="igw-openzeit-value">%s</td></tr>',
+				esc_attr( implode( ' ', $classes ) ),
 				esc_html( $day_names[ $weekday ] ),
 				esc_html( $display )
 			);
@@ -71,73 +73,66 @@ class IGW_Openzeit_Shortcodes {
 		return $html;
 	}
 
-	/**
-	 * Compact grouped output.
-	 *
-	 * @return string
-	 */
 	public function render_short() {
-		$today      = $this->get_site_now();
-		$week_start = $today->modify( 'monday this week' )->setTime( 0, 0, 0 );
-		$day_names  = array( 1 => __( 'Montag', 'igw_wp_open_zeit' ), 2 => __( 'Dienstag', 'igw_wp_open_zeit' ), 3 => __( 'Mittwoch', 'igw_wp_open_zeit' ), 4 => __( 'Donnerstag', 'igw_wp_open_zeit' ), 5 => __( 'Freitag', 'igw_wp_open_zeit' ), 6 => __( 'Samstag', 'igw_wp_open_zeit' ), 7 => __( 'Sonntag', 'igw_wp_open_zeit' ) );
+		$today      = $this->get_site_now()->setTime( 0, 0, 0 );
+		$week_dates = $this->get_week_dates( $today );
+		$day_names  = $this->day_names();
 
-		$effective_rows = array();
-		for ( $i = 0; $i < 7; $i++ ) {
-			$day       = $week_start->modify( '+' . $i . ' days' );
+		$rows = array();
+		foreach ( $week_dates as $day ) {
 			$effective = $this->service->get_effective_day_resolution( $day );
-
 			if ( 'closed' === $effective['state'] ) {
 				continue;
 			}
-
-			$effective_rows[] = array(
-				'day'   => (int) $day->format( 'N' ),
-				'label' => $effective['label'],
-			);
+			$rows[] = array('day'=>(int)$day->format('N'),'label'=>$effective['label']);
 		}
-
-		if ( empty( $effective_rows ) ) {
+		if ( empty( $rows ) ) {
 			return '';
 		}
 
 		$groups = array();
-		foreach ( $effective_rows as $row ) {
-			$last_index = count( $groups ) - 1;
-			if ( $last_index >= 0 && $groups[ $last_index ]['label'] === $row['label'] && $groups[ $last_index ]['to'] + 1 === $row['day'] ) {
-				$groups[ $last_index ]['to'] = $row['day'];
-				continue;
+		foreach ( $rows as $row ) {
+			$i = count( $groups ) - 1;
+			if ( $i >= 0 && $groups[ $i ]['label'] === $row['label'] && $groups[ $i ]['to'] + 1 === $row['day'] ) {
+				$groups[ $i ]['to'] = $row['day'];
+			} else {
+				$groups[] = array( 'from' => $row['day'], 'to' => $row['day'], 'label' => $row['label'] );
 			}
-
-			$groups[] = array(
-				'from'  => $row['day'],
-				'to'    => $row['day'],
-				'label' => $row['label'],
-			);
 		}
 
-		$lines = array();
-		foreach ( $groups as $group ) {
-			$days = $day_names[ $group['from'] ];
-			if ( $group['from'] !== $group['to'] ) {
-				$days .= ' – ' . $day_names[ $group['to'] ];
-			}
-			$lines[] = sprintf( '<div class="igw-openzeit-short-row"><span>%s</span><span>%s</span></div>', esc_html( $days ), esc_html( $group['label'] ) );
+		$out = '<div class="igw-openzeit-short">';
+		foreach ( $groups as $g ) {
+			$range = $day_names[ $g['from'] ] . ( $g['from'] !== $g['to'] ? ' - ' . $day_names[ $g['to'] ] : '' );
+			$out  .= sprintf( '<div class="igw-openzeit-short-row"><span class="igw-openzeit-short-days">%s</span><span class="igw-openzeit-short-value">%s</span></div>', esc_html( $range ), esc_html( $g['label'] ) );
 		}
+		$out .= '</div>';
 
-		return '<div class="igw-openzeit-short">' . implode( '', $lines ) . '</div>';
+		return $out;
 	}
 
-	/**
-	 * Returns current datetime in site timezone.
-	 *
-	 * @return DateTimeImmutable
-	 */
+	/** @return array<int,DateTimeImmutable> */
+	protected function get_week_dates( DateTimeImmutable $now ) {
+		$wp_start = (int) get_option( 'start_of_week', 1 ); // 0=Sunday.
+		$start_n  = 0 === $wp_start ? 7 : $wp_start;
+		$current_n = (int) $now->format( 'N' );
+		$delta = $current_n - $start_n;
+		if ( $delta < 0 ) {
+			$delta += 7;
+		}
+		$start = $now->modify( '-' . $delta . ' days' );
+		$dates = array();
+		for ( $i = 0; $i < 7; $i++ ) {
+			$dates[] = $start->modify( '+' . $i . ' days' );
+		}
+		return $dates;
+	}
+
+	protected function day_names() {
+		return array( 1 => __( 'Montag', 'igw_wp_open_zeit' ), 2 => __( 'Dienstag', 'igw_wp_open_zeit' ), 3 => __( 'Mittwoch', 'igw_wp_open_zeit' ), 4 => __( 'Donnerstag', 'igw_wp_open_zeit' ), 5 => __( 'Freitag', 'igw_wp_open_zeit' ), 6 => __( 'Samstag', 'igw_wp_open_zeit' ), 7 => __( 'Sonntag', 'igw_wp_open_zeit' ) );
+	}
+
 	protected function get_site_now() {
 		$tz = function_exists( 'wp_timezone' ) ? wp_timezone() : new DateTimeZone( date_default_timezone_get() );
-		if ( function_exists( 'current_datetime' ) ) {
-			return DateTimeImmutable::createFromInterface( current_datetime() )->setTimezone( $tz );
-		}
-
-		return new DateTimeImmutable( 'now', $tz );
+		return function_exists( 'current_datetime' ) ? DateTimeImmutable::createFromInterface( current_datetime() )->setTimezone( $tz ) : new DateTimeImmutable( 'now', $tz );
 	}
 }

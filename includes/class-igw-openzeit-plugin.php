@@ -10,83 +10,50 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 class IGW_Openzeit_Plugin {
-
-	/**
-	 * Singleton.
-	 *
-	 * @var self|null
-	 */
 	protected static $instance = null;
-
-	/**
-	 * @var IGW_Openzeit_Service
-	 */
 	protected $service;
-
-	/**
-	 * @var IGW_Openzeit_Shortcodes
-	 */
 	protected $shortcodes;
-
-	/**
-	 * @var IGW_Openzeit_Admin|null
-	 */
 	protected $admin = null;
+	protected $repository;
+	protected $validator;
 
-	/**
-	 * @return self
-	 */
 	public static function instance() {
 		if ( null === self::$instance ) {
 			self::$instance = new self();
 		}
-
 		return self::$instance;
 	}
 
-	/**
-	 * Constructor.
-	 */
 	protected function __construct() {
 		add_action( 'plugins_loaded', array( $this, 'init' ) );
+		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_public_assets' ) );
 	}
 
-	/**
-	 * Init plugin components.
-	 *
-	 * @return void
-	 */
 	public function init() {
 		load_plugin_textdomain( 'igw_wp_open_zeit', false, dirname( plugin_basename( IGW_WP_OPEN_ZEIT_FILE ) ) . '/languages' );
 
-		$weekly_hours = get_option( 'igw_wp_open_zeit_hours', array() );
-		if ( ! is_array( $weekly_hours ) ) {
-			$weekly_hours = array();
-		}
-
-		$this->service    = new IGW_Openzeit_Service( $weekly_hours );
+		$this->repository = new IGW_Openzeit_Repository();
+		$this->validator  = new IGW_Openzeit_Validator();
+		$this->service    = new IGW_Openzeit_Service( $this->repository->get_data() );
 		$this->shortcodes = new IGW_Openzeit_Shortcodes( $this->service );
 
 		if ( is_admin() ) {
-			$this->admin = new IGW_Openzeit_Admin();
+			$this->admin = new IGW_Openzeit_Admin( $this->repository, $this->validator );
 			$this->admin->hooks();
 		}
 
 		$this->register_shortcodes();
 	}
 
-	/**
-	 * Register shortcode aliases.
-	 *
-	 * @return void
-	 */
+	public function enqueue_public_assets() {
+		wp_enqueue_style( 'igw-openzeit-public', IGW_WP_OPEN_ZEIT_URL . 'public/assets/public.css', array(), IGW_WP_OPEN_ZEIT_VERSION );
+	}
+
 	protected function register_shortcodes() {
 		add_shortcode( 'igw_wp_open_zeit_text', array( $this->shortcodes, 'render_text' ) );
 		add_shortcode( 'open_zeit_text', array( $this->shortcodes, 'render_text' ) );
-
 		add_shortcode( 'igw_wp_open_zeit_tage', array( $this->shortcodes, 'render_days' ) );
 		add_shortcode( 'open_zeit_tage', array( $this->shortcodes, 'render_days' ) );
-
 		add_shortcode( 'igw_wp_open_zeit_short', array( $this->shortcodes, 'render_short' ) );
 		add_shortcode( 'open_zeit_short', array( $this->shortcodes, 'render_short' ) );
 	}

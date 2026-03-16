@@ -11,28 +11,23 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class IGW_Openzeit_Admin {
 
-	/**
-	 * Option name for weekly hours.
-	 *
-	 * @var string
-	 */
-	const OPTION_HOURS = 'igw_wp_open_zeit_hours';
+	/** @var IGW_Openzeit_Repository */
+	protected $repository;
 
-	/**
-	 * Register admin hooks.
-	 *
-	 * @return void
-	 */
+	/** @var IGW_Openzeit_Validator */
+	protected $validator;
+
+	public function __construct( IGW_Openzeit_Repository $repository, IGW_Openzeit_Validator $validator ) {
+		$this->repository = $repository;
+		$this->validator  = $validator;
+	}
+
 	public function hooks() {
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 	}
 
-	/**
-	 * Add settings page.
-	 *
-	 * @return void
-	 */
 	public function register_menu() {
 		add_options_page(
 			__( 'IGW Öffnungszeiten', 'igw_wp_open_zeit' ),
@@ -43,170 +38,77 @@ class IGW_Openzeit_Admin {
 		);
 	}
 
-	/**
-	 * Register settings and fields.
-	 *
-	 * @return void
-	 */
 	public function register_settings() {
 		register_setting(
 			'igw_wp_open_zeit',
-			self::OPTION_HOURS,
+			IGW_Openzeit_Repository::OPTION_KEY,
 			array(
 				'type'              => 'array',
-				'sanitize_callback' => array( $this, 'sanitize_hours_option' ),
-				'default'           => array(),
+				'sanitize_callback' => array( $this, 'sanitize_data' ),
+				'default'           => $this->repository->get_default_data(),
 			)
 		);
 	}
 
 	/**
-	 * Sanitize opening hours textarea format.
-	 *
-	 * Input per day: 09:00-13:00,15:00-18:00
-	 *
-	 * @param mixed $value Raw value.
-	 * @return array<int,array<int,array{start:string,end:string}>>
+	 * @param mixed $value
+	 * @return array<string,mixed>
 	 */
-	public function sanitize_hours_option( $value ) {
-		if ( ! is_array( $value ) ) {
-			return array();
-		}
-
-		$sanitized = array();
-		for ( $day = 1; $day <= 7; $day++ ) {
-			$raw = isset( $value[ $day ] ) ? (string) $value[ $day ] : '';
-			$raw = trim( $raw );
-			if ( '' === $raw ) {
-				continue;
-			}
-
-			$intervals = array();
-			$parts     = array_map( 'trim', explode( ',', $raw ) );
-			foreach ( $parts as $part ) {
-				if ( '' === $part ) {
-					continue;
-				}
-
-				$part = str_replace( array( '–', '—', ';' ), array( '-', '-', ',' ), $part );
-				if ( false === strpos( $part, '-' ) ) {
-					continue;
-				}
-
-				list( $start_raw, $end_raw ) = array_map( 'trim', explode( '-', $part, 2 ) );
-				$start = $this->normalize_time_value( $start_raw );
-				$end   = $this->normalize_time_value( $end_raw );
-				if ( '' === $start || '' === $end ) {
-					continue;
-				}
-
-				if ( $start >= $end ) {
-					continue;
-				}
-
-				$intervals[] = array(
-					'start' => $start,
-					'end'   => $end,
-				);
-			}
-
-			if ( ! empty( $intervals ) ) {
-				$sanitized[ $day ] = $intervals;
-			}
-		}
-
-		return $sanitized;
+	public function sanitize_data( $value ) {
+		return $this->validator->validate_data( $value );
 	}
 
-	/**
-	 * Normalizes a time value to H:i.
-	 *
-	 * @param string $value Raw input value.
-	 * @return string
-	 */
-	protected function normalize_time_value( $value ) {
-		$value = trim( (string) $value );
-		if ( '' === $value ) {
-			return '';
+	public function enqueue_assets( $hook ) {
+		if ( 'settings_page_igw-wp-open-zeit' !== $hook ) {
+			return;
 		}
 
-		$value = str_replace( '.', ':', $value );
-		if ( preg_match( '/^(\d{1,2}):(\d{2})$/', $value, $matches ) ) {
-			$hour   = (int) $matches[1];
-			$minute = (int) $matches[2];
-			if ( $hour < 0 || $hour > 23 || $minute < 0 || $minute > 59 ) {
-				return '';
-			}
-
-			return sprintf( '%02d:%02d', $hour, $minute );
-		}
-
-		if ( preg_match( '/^(\d{1,2})$/', $value, $matches ) ) {
-			$hour = (int) $matches[1];
-			if ( $hour < 0 || $hour > 23 ) {
-				return '';
-			}
-
-			return sprintf( '%02d:00', $hour );
-		}
-
-		return '';
+		wp_enqueue_style( 'igw-openzeit-admin', IGW_WP_OPEN_ZEIT_URL . 'admin/assets/admin.css', array(), IGW_WP_OPEN_ZEIT_VERSION );
+		wp_enqueue_script( 'igw-openzeit-admin', IGW_WP_OPEN_ZEIT_URL . 'admin/assets/admin.js', array(), IGW_WP_OPEN_ZEIT_VERSION, true );
 	}
 
-
-	/**
-	 * Render settings page.
-	 *
-	 * @return void
-	 */
 	public function render_page() {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
 
-		$hours     = get_option( self::OPTION_HOURS, array() );
-		$day_names = array(
-			1 => __( 'Montag', 'igw_wp_open_zeit' ),
-			2 => __( 'Dienstag', 'igw_wp_open_zeit' ),
-			3 => __( 'Mittwoch', 'igw_wp_open_zeit' ),
-			4 => __( 'Donnerstag', 'igw_wp_open_zeit' ),
-			5 => __( 'Freitag', 'igw_wp_open_zeit' ),
-			6 => __( 'Samstag', 'igw_wp_open_zeit' ),
-			7 => __( 'Sonntag', 'igw_wp_open_zeit' ),
-		);
+		$data      = $this->repository->get_data();
+		$weekly    = isset( $data['weekly'] ) && is_array( $data['weekly'] ) ? $data['weekly'] : array();
+		$day_names = array( 1 => __( 'Montag', 'igw_wp_open_zeit' ), 2 => __( 'Dienstag', 'igw_wp_open_zeit' ), 3 => __( 'Mittwoch', 'igw_wp_open_zeit' ), 4 => __( 'Donnerstag', 'igw_wp_open_zeit' ), 5 => __( 'Freitag', 'igw_wp_open_zeit' ), 6 => __( 'Samstag', 'igw_wp_open_zeit' ), 7 => __( 'Sonntag', 'igw_wp_open_zeit' ) );
 		?>
 		<div class="wrap">
 			<h1><?php echo esc_html__( 'IGW WP Öffnungszeiten', 'igw_wp_open_zeit' ); ?></h1>
-			<p><?php echo esc_html__( 'Tragen Sie pro Tag Zeitintervalle im Format 09:00-13:00,15:00-18:00 ein. Leer = geschlossen.', 'igw_wp_open_zeit' ); ?></p>
 			<form method="post" action="options.php">
 				<?php settings_fields( 'igw_wp_open_zeit' ); ?>
-				<table class="form-table" role="presentation">
+				<table class="form-table igw-openzeit-admin-table" role="presentation">
 					<tbody>
 					<?php for ( $day = 1; $day <= 7; $day++ ) : ?>
 						<?php
-						$value = '';
-						if ( isset( $hours[ $day ] ) && is_array( $hours[ $day ] ) ) {
-							$pieces = array();
-							foreach ( $hours[ $day ] as $interval ) {
-								if ( empty( $interval['start'] ) || empty( $interval['end'] ) ) {
-									continue;
-								}
-								$pieces[] = $interval['start'] . '-' . $interval['end'];
-							}
-							$value = implode( ',', $pieces );
+						$day_data  = isset( $weekly[ $day ] ) && is_array( $weekly[ $day ] ) ? $weekly[ $day ] : array();
+						$closed    = ! empty( $day_data['closed'] );
+						$intervals = isset( $day_data['intervals'] ) && is_array( $day_data['intervals'] ) ? $day_data['intervals'] : array();
+						if ( empty( $intervals ) ) {
+							$intervals = array( array( 'start' => '', 'end' => '' ) );
 						}
 						?>
-						<tr>
-							<th scope="row"><label for="igw-openzeit-day-<?php echo esc_attr( (string) $day ); ?>"><?php echo esc_html( $day_names[ $day ] ); ?></label></th>
+						<tr class="igw-openzeit-day-row" data-day="<?php echo esc_attr( (string) $day ); ?>">
+							<th scope="row"><?php echo esc_html( $day_names[ $day ] ); ?></th>
 							<td>
-								<input
-									type="text"
-									id="igw-openzeit-day-<?php echo esc_attr( (string) $day ); ?>"
-									name="<?php echo esc_attr( self::OPTION_HOURS ); ?>[<?php echo esc_attr( (string) $day ); ?>]"
-									value="<?php echo esc_attr( $value ); ?>"
-									class="regular-text"
-									placeholder="09:00-13:00,15:00-18:00"
-								/>
+								<label>
+									<input type="checkbox" name="<?php echo esc_attr( IGW_Openzeit_Repository::OPTION_KEY ); ?>[weekly][<?php echo esc_attr( (string) $day ); ?>][closed]" value="1" <?php checked( $closed ); ?> />
+									<?php echo esc_html__( 'Geschlossen', 'igw_wp_open_zeit' ); ?>
+								</label>
+								<div class="igw-openzeit-intervals" <?php echo $closed ? 'style="display:none"' : ''; ?>>
+									<?php foreach ( $intervals as $index => $interval ) : ?>
+										<div class="igw-openzeit-interval-row">
+											<input type="time" name="<?php echo esc_attr( IGW_Openzeit_Repository::OPTION_KEY ); ?>[weekly][<?php echo esc_attr( (string) $day ); ?>][intervals][<?php echo esc_attr( (string) $index ); ?>][start]" value="<?php echo esc_attr( isset( $interval['start'] ) ? (string) $interval['start'] : '' ); ?>" />
+											<span>–</span>
+											<input type="time" name="<?php echo esc_attr( IGW_Openzeit_Repository::OPTION_KEY ); ?>[weekly][<?php echo esc_attr( (string) $day ); ?>][intervals][<?php echo esc_attr( (string) $index ); ?>][end]" value="<?php echo esc_attr( isset( $interval['end'] ) ? (string) $interval['end'] : '' ); ?>" />
+											<button type="button" class="button-link-delete igw-remove-interval">×</button>
+										</div>
+									<?php endforeach; ?>
+								</div>
+								<button type="button" class="button igw-add-interval"><?php echo esc_html__( 'Intervall hinzufügen', 'igw_wp_open_zeit' ); ?></button>
 							</td>
 						</tr>
 					<?php endfor; ?>
@@ -214,13 +116,6 @@ class IGW_Openzeit_Admin {
 				</table>
 				<?php submit_button(); ?>
 			</form>
-			<hr />
-			<h2><?php echo esc_html__( 'Verfügbare Shortcodes', 'igw_wp_open_zeit' ); ?></h2>
-			<ul>
-				<li><code>[igw_wp_open_zeit_text]</code>, <code>[open_zeit_text]</code></li>
-				<li><code>[igw_wp_open_zeit_tage]</code>, <code>[open_zeit_tage]</code></li>
-				<li><code>[igw_wp_open_zeit_short]</code>, <code>[open_zeit_short]</code></li>
-			</ul>
 		</div>
 		<?php
 	}
