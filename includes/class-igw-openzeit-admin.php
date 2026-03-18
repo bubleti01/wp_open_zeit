@@ -126,6 +126,7 @@ class IGW_Openzeit_Admin {
 				</table>
 
 				<h2><?php echo esc_html__( 'Feiertage', 'igw_wp_open_zeit' ); ?></h2>
+				<p><?php echo esc_html__( 'Nutze folgende Eingabe nur für Feiertage. Gebe hierzu das Datum und einen Text wie z.B. Karfreitag, Ostermontag, Neujahr oder Geschlossen, ein. Nicht für Urlaubszeiten. (für Urlaub nutze das Plugin "IGW WP Urlaub Post", dessen Urlaube in den Öffnungszeiten berücksichtigt werden).', 'igw_wp_open_zeit' ); ?></p>
 				<table class="widefat striped igw-openzeit-holidays-table" role="presentation">
 					<thead>
 						<tr>

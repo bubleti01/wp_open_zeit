@@ -3,7 +3,7 @@
  * Plugin Name: IGW WP Öffnungszeiten
  * Plugin URI: https://igo2web.com/de/wordpress-plugins-von-igw-design/wp_open_zeit
  * Description: Erstellen/Verwalten Sie Öffnungszeiten in WordPress und zeigen Sie diese in vielen verschiedenen Widgets und Shortcodes an.
- * Version: 1.0.11
+ * Version: 1.0.13
  * Requires at least: 6.0
  * Author: IGW Design
  * Author URI: https://igo2web.com
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'IGW_WP_OPEN_ZEIT_VERSION', '1.0.11' );
+define( 'IGW_WP_OPEN_ZEIT_VERSION', '1.0.13' );
 define( 'IGW_WP_OPEN_ZEIT_FILE', __FILE__ );
 define( 'IGW_WP_OPEN_ZEIT_PATH', plugin_dir_path( __FILE__ ) );
 define( 'IGW_WP_OPEN_ZEIT_URL', plugin_dir_url( __FILE__ ) );
