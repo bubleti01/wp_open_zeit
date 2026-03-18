@@ -1,0 +1,7 @@
+.igw-open { color: green; }
+.igw-closed { color: red; }
+.igw-openzeit-table { width: 100%; border-collapse: collapse; }
+.igw-openzeit-table th, .igw-openzeit-table td { padding: 6px 8px; border-bottom: 1px solid #ddd; }
+.igw-openzeit-today { background: #f8f9fa; }
+.igw-openzeit-today-open { border-left: 3px solid green; }
+.igw-openzeit-short-row { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; }
