@@ -24,7 +24,7 @@ class IGW_Openzeit_Service {
 	 * @param array<string,mixed> $data plugin data.
 	 */
 	public function __construct( array $data ) {
-		$this->data = $data;
+		$this->data        = $data;
 		$this->holiday_map = $this->build_holiday_map();
 	}
 
@@ -90,8 +90,8 @@ class IGW_Openzeit_Service {
 
 	/** @return array{closed:bool,intervals:array<int,array{start:string,end:string}>} */
 	public function get_day_data( $weekday ) {
-		$weekly   = isset( $this->data['weekly'] ) && is_array( $this->data['weekly'] ) ? $this->data['weekly'] : array();
-		$day_data = isset( $weekly[ $weekday ] ) && is_array( $weekly[ $weekday ] ) ? $weekly[ $weekday ] : array();
+		$weekly    = isset( $this->data['weekly'] ) && is_array( $this->data['weekly'] ) ? $this->data['weekly'] : array();
+		$day_data  = isset( $weekly[ $weekday ] ) && is_array( $weekly[ $weekday ] ) ? $weekly[ $weekday ] : array();
 		$intervals = isset( $day_data['intervals'] ) && is_array( $day_data['intervals'] ) ? $day_data['intervals'] : array();
 		return array(
 			'closed'    => ! empty( $day_data['closed'] ) || empty( $intervals ),
@@ -99,9 +99,26 @@ class IGW_Openzeit_Service {
 		);
 	}
 
+	/**
+	 * @param DateTimeInterface|string|null $date Date.
+	 * @return string
+	 */
 	public function get_day_display( $date = null ) {
 		$effective = $this->get_effective_day_resolution( $date );
 		return $effective['label'];
+	}
+
+	/**
+	 * @param DateTimeInterface|string|null $date Date.
+	 * @return array{label_day:string,label_date:string,value:string}
+	 */
+	public function get_day_display_data( $date ) {
+		$datetime = $this->normalize_datetime( $date );
+		return array(
+			'label_day'  => wp_date( 'l', $datetime->getTimestamp(), $datetime->getTimezone() ),
+			'label_date' => wp_date( 'd.m.Y', $datetime->getTimestamp(), $datetime->getTimezone() ),
+			'value'      => $this->get_day_display( $datetime ),
+		);
 	}
 
 	/**
@@ -117,6 +134,19 @@ class IGW_Openzeit_Service {
 		$day = DateTimeImmutable::createFromInterface( $date )->setTime( 0, 0, 0 );
 		foreach ( $this->get_active_vacation_intervals() as $interval ) {
 			if ( $day >= $interval['start'] && $day <= $interval['end'] ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function has_configured_opening_times() {
+		$weekly = isset( $this->data['weekly'] ) && is_array( $this->data['weekly'] ) ? $this->data['weekly'] : array();
+		foreach ( $weekly as $day_data ) {
+			if ( is_array( $day_data ) && ! empty( $day_data['intervals'] ) ) {
 				return true;
 			}
 		}
