@@ -53,6 +53,10 @@ class IGW_Openzeit_Repository {
 			}
 		}
 
+		if ( ! isset( $data['holidays'] ) || ! is_array( $data['holidays'] ) ) {
+			$data['holidays'] = array();
+		}
+
 		return $data;
 	}
 
@@ -81,7 +85,8 @@ class IGW_Openzeit_Repository {
 		}
 
 		return array(
-			'weekly' => $weekly,
+			'weekly'   => $weekly,
+			'holidays' => array(),
 		);
 	}
 
@@ -98,7 +103,7 @@ class IGW_Openzeit_Repository {
 
 		$data = $this->get_default_data();
 		for ( $day = 1; $day <= 7; $day++ ) {
-			$intervals = isset( $legacy[ $day ] ) && is_array( $legacy[ $day ] ) ? $legacy[ $day ] : array();
+			$intervals  = isset( $legacy[ $day ] ) && is_array( $legacy[ $day ] ) ? $legacy[ $day ] : array();
 			$normalized = array();
 			foreach ( $intervals as $interval ) {
 				if ( empty( $interval['start'] ) || empty( $interval['end'] ) ) {

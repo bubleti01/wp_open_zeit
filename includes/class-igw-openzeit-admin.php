@@ -74,7 +74,17 @@ class IGW_Openzeit_Admin {
 
 		$data      = $this->repository->get_data();
 		$weekly    = isset( $data['weekly'] ) && is_array( $data['weekly'] ) ? $data['weekly'] : array();
+		$holidays  = isset( $data['holidays'] ) && is_array( $data['holidays'] ) ? $data['holidays'] : array();
 		$day_names = array( 1 => __( 'Montag', 'igw_wp_open_zeit' ), 2 => __( 'Dienstag', 'igw_wp_open_zeit' ), 3 => __( 'Mittwoch', 'igw_wp_open_zeit' ), 4 => __( 'Donnerstag', 'igw_wp_open_zeit' ), 5 => __( 'Freitag', 'igw_wp_open_zeit' ), 6 => __( 'Samstag', 'igw_wp_open_zeit' ), 7 => __( 'Sonntag', 'igw_wp_open_zeit' ) );
+
+		if ( empty( $holidays ) ) {
+			$holidays = array(
+				array(
+					'date' => '',
+					'text' => '',
+				),
+			);
+		}
 		?>
 		<div class="wrap">
 			<h1><?php echo esc_html__( 'IGW WP Öffnungszeiten', 'igw_wp_open_zeit' ); ?></h1>
@@ -114,6 +124,36 @@ class IGW_Openzeit_Admin {
 					<?php endfor; ?>
 					</tbody>
 				</table>
+
+				<h2><?php echo esc_html__( 'Feiertage', 'igw_wp_open_zeit' ); ?></h2>
+				<table class="widefat striped igw-openzeit-holidays-table" role="presentation">
+					<thead>
+						<tr>
+							<th><?php echo esc_html__( 'Datum', 'igw_wp_open_zeit' ); ?></th>
+							<th><?php echo esc_html__( 'Text', 'igw_wp_open_zeit' ); ?></th>
+							<th><?php echo esc_html__( 'Aktion', 'igw_wp_open_zeit' ); ?></th>
+						</tr>
+					</thead>
+					<tbody class="igw-openzeit-holidays-body">
+						<?php foreach ( $holidays as $index => $holiday ) : ?>
+							<tr class="igw-openzeit-holiday-row">
+								<td>
+									<input type="text" class="regular-text" placeholder="03.10.2026" name="<?php echo esc_attr( IGW_Openzeit_Repository::OPTION_KEY ); ?>[holidays][<?php echo esc_attr( (string) $index ); ?>][date]" value="<?php echo esc_attr( isset( $holiday['date'] ) ? (string) $holiday['date'] : '' ); ?>" />
+								</td>
+								<td>
+									<input type="text" class="regular-text" name="<?php echo esc_attr( IGW_Openzeit_Repository::OPTION_KEY ); ?>[holidays][<?php echo esc_attr( (string) $index ); ?>][text]" value="<?php echo esc_attr( isset( $holiday['text'] ) ? (string) $holiday['text'] : '' ); ?>" />
+								</td>
+								<td>
+									<button type="button" class="button-link-delete igw-remove-holiday"><?php echo esc_html__( 'Entfernen', 'igw_wp_open_zeit' ); ?></button>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+				<p>
+					<button type="button" class="button igw-add-holiday"><?php echo esc_html__( 'Feiertag hinzufügen', 'igw_wp_open_zeit' ); ?></button>
+				</p>
+
 				<?php submit_button(); ?>
 			</form>
 		</div>

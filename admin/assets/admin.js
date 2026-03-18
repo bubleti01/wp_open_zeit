@@ -5,11 +5,25 @@
     if(!closed || !block) return;
     block.style.display = closed.checked ? 'none' : '';
   }
+
+  function addHolidayRow(){
+    var body = document.querySelector('.igw-openzeit-holidays-body');
+    if(!body) return;
+    var index = body.querySelectorAll('.igw-openzeit-holiday-row').length;
+    var html = '<tr class="igw-openzeit-holiday-row">'
+      + '<td><input type="text" class="regular-text" placeholder="03.10.2026" name="igw_wp_open_zeit_data[holidays]['+index+'][date]" value="" /></td>'
+      + '<td><input type="text" class="regular-text" name="igw_wp_open_zeit_data[holidays]['+index+'][text]" value="" /></td>'
+      + '<td><button type="button" class="button-link-delete igw-remove-holiday">Entfernen</button></td>'
+      + '</tr>';
+    body.insertAdjacentHTML('beforeend', html);
+  }
+
   document.addEventListener('change', function(e){
     if(e.target.matches('.igw-openzeit-day-row input[type="checkbox"]')){
       refreshRow(e.target.closest('.igw-openzeit-day-row'));
     }
   });
+
   document.addEventListener('click', function(e){
     if(e.target.matches('.igw-add-interval')){
       var row = e.target.closest('.igw-openzeit-day-row');
@@ -24,11 +38,25 @@
         + '</div>';
       box.insertAdjacentHTML('beforeend', html);
     }
+
     if(e.target.matches('.igw-remove-interval')){
       var line = e.target.closest('.igw-openzeit-interval-row');
-      var box = line.parentNode;
-      line.remove();
+      if(line){
+        line.remove();
+      }
+    }
+
+    if(e.target.matches('.igw-add-holiday')){
+      addHolidayRow();
+    }
+
+    if(e.target.matches('.igw-remove-holiday')){
+      var holidayRow = e.target.closest('.igw-openzeit-holiday-row');
+      if(holidayRow){
+        holidayRow.remove();
+      }
     }
   });
+
   document.querySelectorAll('.igw-openzeit-day-row').forEach(refreshRow);
 })();

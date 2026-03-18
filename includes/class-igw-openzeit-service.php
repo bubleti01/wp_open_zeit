@@ -14,6 +14,9 @@ class IGW_Openzeit_Service {
 	/** @var array<string,mixed> */
 	protected $data = array();
 
+	/** @var array<string,string> */
+	protected $holiday_map = array();
+
 	/** @var array<int,array{start:DateTimeImmutable,end:DateTimeImmutable}>|null */
 	protected $vacation_intervals = null;
 
@@ -22,6 +25,7 @@ class IGW_Openzeit_Service {
 	 */
 	public function __construct( array $data ) {
 		$this->data = $data;
+		$this->holiday_map = $this->build_holiday_map();
 	}
 
 	/**
@@ -29,7 +33,7 @@ class IGW_Openzeit_Service {
 	 * @return bool
 	 */
 	public function is_open_now( $date = null ) {
-		$datetime = $this->normalize_datetime( $date );
+		$datetime  = $this->normalize_datetime( $date );
 		$effective = $this->get_effective_day_resolution( $datetime );
 		if ( 'hours' !== $effective['state'] ) {
 			return false;
@@ -52,28 +56,45 @@ class IGW_Openzeit_Service {
 	public function get_effective_day_resolution( $date = null ) {
 		$datetime = $this->normalize_datetime( $date );
 		if ( $this->is_vacation_day( $datetime ) ) {
-			return array('state'=>'vacation','label'=>__( 'Betriebsurlaub', 'igw_wp_open_zeit' ),'intervals'=>array());
+			return array(
+				'state'     => 'vacation',
+				'label'     => __( 'Betriebsurlaub', 'igw_wp_open_zeit' ),
+				'intervals' => array(),
+			);
+		}
+
+		$holiday_label = $this->get_holiday_label( $datetime );
+		if ( null !== $holiday_label ) {
+			return array(
+				'state'     => 'holiday',
+				'label'     => $holiday_label,
+				'intervals' => array(),
+			);
 		}
 
 		$day_data = $this->get_day_data( (int) $datetime->format( 'N' ) );
 		if ( ! empty( $day_data['closed'] ) || empty( $day_data['intervals'] ) ) {
-			return array('state'=>'closed','label'=>__( 'Geschlossen', 'igw_wp_open_zeit' ),'intervals'=>array());
+			return array(
+				'state'     => 'closed',
+				'label'     => __( 'Geschlossen', 'igw_wp_open_zeit' ),
+				'intervals' => array(),
+			);
 		}
 
 		return array(
-			'state' => 'hours',
-			'label' => $this->format_intervals( $day_data['intervals'] ),
+			'state'     => 'hours',
+			'label'     => $this->format_intervals( $day_data['intervals'] ),
 			'intervals' => $day_data['intervals'],
 		);
 	}
 
 	/** @return array{closed:bool,intervals:array<int,array{start:string,end:string}>} */
 	public function get_day_data( $weekday ) {
-		$weekly = isset( $this->data['weekly'] ) && is_array( $this->data['weekly'] ) ? $this->data['weekly'] : array();
+		$weekly   = isset( $this->data['weekly'] ) && is_array( $this->data['weekly'] ) ? $this->data['weekly'] : array();
 		$day_data = isset( $weekly[ $weekday ] ) && is_array( $weekly[ $weekday ] ) ? $weekly[ $weekday ] : array();
 		$intervals = isset( $day_data['intervals'] ) && is_array( $day_data['intervals'] ) ? $day_data['intervals'] : array();
 		return array(
-			'closed' => ! empty( $day_data['closed'] ) || empty( $intervals ),
+			'closed'    => ! empty( $day_data['closed'] ) || empty( $intervals ),
 			'intervals' => $intervals,
 		);
 	}
@@ -81,6 +102,15 @@ class IGW_Openzeit_Service {
 	public function get_day_display( $date = null ) {
 		$effective = $this->get_effective_day_resolution( $date );
 		return $effective['label'];
+	}
+
+	/**
+	 * @param DateTimeInterface $date Date.
+	 * @return string|null
+	 */
+	public function get_holiday_label( DateTimeInterface $date ) {
+		$key = DateTimeImmutable::createFromInterface( $date )->setTime( 0, 0, 0 )->format( 'Y-m-d' );
+		return isset( $this->holiday_map[ $key ] ) ? $this->holiday_map[ $key ] : null;
 	}
 
 	public function is_vacation_day( DateTimeInterface $date ) {
@@ -93,6 +123,9 @@ class IGW_Openzeit_Service {
 		return false;
 	}
 
+	/**
+	 * @return array<int,array{start:DateTimeImmutable,end:DateTimeImmutable}>
+	 */
 	protected function get_active_vacation_intervals() {
 		if ( null !== $this->vacation_intervals ) {
 			return $this->vacation_intervals;
@@ -101,15 +134,50 @@ class IGW_Openzeit_Service {
 		if ( ! post_type_exists( 'urlaub_post' ) ) {
 			return $this->vacation_intervals;
 		}
-		$posts = get_posts(array('post_type'=>'urlaub_post','post_status'=>'publish','posts_per_page'=>-1,'fields'=>'ids','meta_query'=>array(array('key'=>'active','value'=>'1'))));
+		$posts = get_posts(
+			array(
+				'post_type'      => 'urlaub_post',
+				'post_status'    => 'publish',
+				'posts_per_page' => -1,
+				'fields'         => 'ids',
+				'meta_query'     => array(
+					array(
+						'key'   => 'active',
+						'value' => '1',
+					),
+				),
+			)
+		);
 		foreach ( (array) $posts as $post_id ) {
 			$start = $this->parse_site_date( get_post_meta( $post_id, 'von_datum', true ) );
-			$end = $this->parse_site_date( get_post_meta( $post_id, 'bis_datum', true ) );
+			$end   = $this->parse_site_date( get_post_meta( $post_id, 'bis_datum', true ) );
 			if ( $start && $end && $end >= $start ) {
-				$this->vacation_intervals[] = array('start'=>$start,'end'=>$end);
+				$this->vacation_intervals[] = array(
+					'start' => $start,
+					'end'   => $end,
+				);
 			}
 		}
 		return $this->vacation_intervals;
+	}
+
+	/**
+	 * @return array<string,string>
+	 */
+	protected function build_holiday_map() {
+		$map      = array();
+		$holidays = isset( $this->data['holidays'] ) && is_array( $this->data['holidays'] ) ? $this->data['holidays'] : array();
+		foreach ( $holidays as $holiday ) {
+			if ( ! is_array( $holiday ) || empty( $holiday['date'] ) || empty( $holiday['text'] ) ) {
+				continue;
+			}
+			$date = DateTimeImmutable::createFromFormat( 'd.m.Y', (string) $holiday['date'] );
+			if ( false === $date ) {
+				continue;
+			}
+			$map[ $date->format( 'Y-m-d' ) ] = (string) $holiday['text'];
+		}
+		return $map;
 	}
 
 	protected function normalize_datetime( $date ) {
@@ -130,7 +198,7 @@ class IGW_Openzeit_Service {
 		if ( ! is_string( $raw ) || '' === trim( $raw ) ) {
 			return null;
 		}
-		$tz = function_exists( 'wp_timezone' ) ? wp_timezone() : new DateTimeZone( date_default_timezone_get() );
+		$tz  = function_exists( 'wp_timezone' ) ? wp_timezone() : new DateTimeZone( date_default_timezone_get() );
 		$raw = trim( $raw );
 		foreach ( array( 'Y-m-d', 'd.m.Y', 'Ymd' ) as $format ) {
 			$date = DateTimeImmutable::createFromFormat( $format, $raw, $tz );
