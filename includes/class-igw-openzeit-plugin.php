@@ -27,7 +27,6 @@ class IGW_Openzeit_Plugin {
 	protected function __construct() {
 		add_action( 'plugins_loaded', array( $this, 'init' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_public_assets' ) );
-		add_action( 'wp_dashboard_setup', array( $this, 'register_dashboard_widget' ) );
 	}
 
 	public function init() {
@@ -41,6 +40,7 @@ class IGW_Openzeit_Plugin {
 		if ( is_admin() ) {
 			$this->admin = new IGW_Openzeit_Admin( $this->repository, $this->validator );
 			$this->admin->hooks();
+			add_action( 'wp_dashboard_setup', array( $this, 'register_dashboard_widget' ) );
 		}
 
 		$this->register_shortcodes();
